@@ -16,66 +16,40 @@
 #                                                                   #
 #####################################################################
 
-# Principais Variaveis
-PROCURADIR=$(find /home/lfms/ -type d -name "Backup")
-DATADEHOJE=$(date +%Y%m%d%H%M)
-ULTIMODIR=$(ls "$PROCURADIR" -t1 | head -n 1)
+DIRDEST=$HOME/Backup
 
-# procurando se tem a variavel no depois do diretorio do usuario
-if test -d "$PROCURADIR";
+if [ ! -d $DIRDEST ]
 then
-	cd "$PROCURADIR"
-	if test -d $ULTIMODIR;
-	then    # criando as variaveis para facilitar as contagens do dias
-		DATACRIACAO=$(stat -c %Y "$ULTIMODIR")
-		DATAATUAL=$(date +%s)
-		DIFERENCA=$((DATAATUAL - DATACRIACAO))
-		SETEDIAS=$((7 * 24 * 60 * 60))
-		# Esse if é para fazer a condição se foi feito o backup antes ou depois de 7 dias
-		if test "$DIFERENCA" -le "$SETEDIAS"; then
-			echo "Ja foi criado um diretorio nos ultimos 7 dias"
-			read -p "Deseja Continuar? (S/N)" RESPOSTA
-			echo ""
-			# Melhor opção ate o momento de fazer case de questionamento de como prosseguir
-			case "$RESPOSTA" in
-				y|s|S)
-					echo "Será criado mais um backup para a mesma semana."
-					echo "Criando backup!"
-		                        echo""
-                		        mkdir backup_home_$DATADEHOJE
-					ULTIMODIR=$(ls -t1 | head -n 1)
-					cd "$ULTIMODIR"
-					touch backup_home_$DATADEHOJE
-                        		echo "O backup de nome: ""backup_home_$DATADEHOJE ""foi criado em $PROCURADIR"
-					echo ""
-					echo "Backup Concluído!"
-					;;
-
-				n|N)    # Se o usuario não quiser prosseguir com o backup adicional 
-                                        #coloquei como saida direto
-					echo "saindo .."
-					exit 0
-					;;
-				*)
-					echo "Opção invalida, saindo do script!"
-					exit 1
-					;;
-			esac
-		else    #saindo da condição criada :D  aqui ja indo para o backup direto
-			echo "Criando um diretorio!"
-			echo ""
-			mkdir backup_home_$DATADEHOJE
-			ULTIMODIR=$(ls -t1 | head -n 1)
-                        cd "$ULTIMODIR"
-                        touch backup_home_$DATADEHOJE
-			echo "O backup de nome: ""backup_home_$DATADEHOJE ""foi criado em $PROCURADIR"
-			echo ""
-			echo "Backup Concluido!"
-		fi
-	else
-		echo "Não existe diretorio"
-	fi
-else
-	mkdir /home/lfms/Backup
-	echo "diretorio criado em /home/lfms/Backup"
+	echo "Criando Diretório $DIRDEST..."
+	mkdir -p $DIRDEST
 fi
+
+DAYS7=$(find $DIRDEST -ctime -7 -name backup_home\*tgz)       # Atenção na proteção do *
+
+if [ "$DAYS7" ]   # Testa se a variável é nula. Atenção nas aspas duplas
+then
+	echo "Já foi gerado um backup do diretório $HOME nos últimos 7 dias."
+	echo -n "Deseja continuar? (N/s): "
+	read -n1 CONT
+	echo
+	if [ "$CONT" = N -o "$CONT" = n -o "$CONT" = "" ]
+	then
+		echo "Backup Abortado!"
+		exit 1
+	elif [ $CONT = S -o $CONT = s ]
+ 	then
+		echo "Será criado mais um backup para a mesma semana"
+	else
+		echo "Opção Inválida"
+		exit 2
+	fi
+fi
+
+echo "Criando Backup..."
+ARQ="backup_home_$(date +%Y%m%d%H%M).tgz"
+tar zcvpf $DIRDEST/$ARQ --exclude="$DIRDEST" "$HOME"/* > /dev/null
+
+echo
+echo "O backup de nome \""$ARQ"\" foi criado em $DIRDEST"
+echo
+echo "Backup Concluído!"
